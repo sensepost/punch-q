@@ -1,0 +1,8 @@
+admin:passw0rd
+mqm:
+mqm:mqm
+mqm:mqm!
+mqadmin:
+mqadmin:mqadmin
+mqadmin:mqadmin!
+adm:adm
