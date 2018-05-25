@@ -328,6 +328,7 @@ def queues(prefix, min_depth):
 
     try:
 
+        click.secho('Showing queues with prefix: \'{0}\'...\n'.format(prefix), dim=True)
         response = pcf.MQCMD_INQUIRE_Q(args)
 
     except pymqi.MQMIError as sqe:
@@ -386,6 +387,7 @@ def channels(prefix):
 
     try:
 
+        click.secho('Showing channels with prefix: \'{0}\'...\n'.format(prefix), dim=True)
         response = pcf.MQCMD_INQUIRE_CHANNEL(args)
 
     except pymqi.MQMIError as sce:
