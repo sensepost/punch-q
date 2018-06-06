@@ -663,7 +663,7 @@ def save(queue, limit, directory):
         Save messages from a queue to a file, non-destructively.
     """
 
-    mqstate.validate(['host', 'port'])
+    mqstate.validate(['host', 'port', 'channel'])
 
     # Automatically generate a directory to save messages to
     if not directory:
