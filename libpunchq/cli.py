@@ -122,8 +122,11 @@ def ping():
     pcf.MQCMD_PING_Q_MGR()
     click.secho('Queue manager command server is responsive.', fg='green')
 
+    # Attempt to determine the MQ command level.
+    mq_params = pcf.MQCMD_INQUIRE_Q_MGR({pymqi.CMQCFC.MQCMD_INQUIRE_SYSTEM: '*'})
+
     # Get the queue manager status
-    status = pcf.MQCMD_INQUIRE_Q_MGR_STATUS()[0]
+    mq_status = pcf.MQCMD_INQUIRE_Q_MGR_STATUS()[0]
 
     # A number of these are not in CMQC, so this comment is a reference:
     # MQCA_INSTALLATION_DESC: 2115
@@ -135,13 +138,15 @@ def ping():
 
     click.secho('Queue Manager Status:', bold=True)
     click.secho('---------------------', bold=True)
-    click.secho('Queue Manager Name:        {0}'.format(status.get(pymqi.CMQC.MQCA_Q_MGR_NAME, '(unknown)')), bold=True)
-    click.secho('Installation Name:         {0}'.format(status.get(2116, '(unknown)')), bold=True)
-    click.secho('Installation Path:         {0}'.format(status.get(2117, '(unknown)')), bold=True)
-    click.secho('Installation Description:  {0}'.format(status.get(2115, '(unknown)')), bold=True)
-    click.secho('Log Path:                  {0}'.format(status.get(3074, '(unknown)')), bold=True)
+    click.secho('Command Level:             {0}'.format(mq_params[0][pymqi.CMQC.MQIA_COMMAND_LEVEL]), bold=True)
+    click.secho('Queue Manager Name:        {0}'.format(mq_status.get(pymqi.CMQC.MQCA_Q_MGR_NAME, '(unknown)')),
+                bold=True)
+    click.secho('Installation Name:         {0}'.format(mq_status.get(2116, '(unknown)')), bold=True)
+    click.secho('Installation Path:         {0}'.format(mq_status.get(2117, '(unknown)')), bold=True)
+    click.secho('Installation Description:  {0}'.format(mq_status.get(2115, '(unknown)')), bold=True)
+    click.secho('Log Path:                  {0}'.format(mq_status.get(3074, '(unknown)')), bold=True)
     click.secho('Queue Manager Start Time:  {0}'.format(' '.join([
-        status.get(3175, '').strip(), status.get(3176, '').strip()])), bold=True)
+        mq_status.get(3175, '').strip(), mq_status.get(3176, '').strip()])), bold=True)
     click.secho('\n')
 
     click.secho('Successfully queried queue manager status.', fg='green')
@@ -246,6 +251,10 @@ def channels(wordlist):
             # An unauthenticated message means the channel at least exists.
             elif ce.reason == pymqi.CMQC.MQRC_NOT_AUTHORIZED:
                 click.secho('"{0}" might exist, but user was not authorised.'.format(channel), bold=True)
+
+            # Maybe this is an SSL error
+            elif ce.reason == pymqi.CMQC.MQRC_SSL_INITIALIZATION_ERROR:
+                click.secho('"{0}" might exist, but wants SSL.'.format(channel), bold=True, fg='yellow')
 
             else:
                 # Some other error condition occurred.
