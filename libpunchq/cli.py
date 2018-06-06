@@ -238,27 +238,29 @@ def channels(wordlist):
 
             # Unknown channel. This is ok, just move along.
             if ce.reason == pymqi.CMQC.MQRC_UNKNOWN_CHANNEL_NAME:
-                pass
+                continue
 
             # The channel could be a sender /receiver type.
             elif ce.reason == pymqi.CMQC.MQRC_CHANNEL_CONFIG_ERROR:
-                pass
+                continue
 
             # Previous disconnect was not successful. Not sure why this happens tbh.
             elif ce.reason == pymqi.CMQC.MQRC_ALREADY_CONNECTED:
                 qmgr.disconnect()
+                continue
 
             # An unauthenticated message means the channel at least exists.
             elif ce.reason == pymqi.CMQC.MQRC_NOT_AUTHORIZED:
                 click.secho('"{0}" might exist, but user was not authorised.'.format(channel), bold=True)
+                continue
 
             # Maybe this is an SSL error
             elif ce.reason == pymqi.CMQC.MQRC_SSL_INITIALIZATION_ERROR:
                 click.secho('"{0}" might exist, but wants SSL.'.format(channel), bold=True, fg='yellow')
+                continue
 
-            else:
-                # Some other error condition occurred.
-                raise ce
+            # Some other error condition occurred.
+            raise ce
 
 
 @discover.command()
@@ -299,10 +301,10 @@ def users(channel):
 
             # unknown channel
             if ce.reason == pymqi.CMQC.MQRC_NOT_AUTHORIZED:
-                pass
-            else:
-                # Some other error condition.
-                raise ce
+                continue
+
+            # Some other error condition.
+            raise ce
 
 
 @cli.group()
