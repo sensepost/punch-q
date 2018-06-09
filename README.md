@@ -20,8 +20,8 @@
 
 With `punch-q`, you can:
 
-- GET / PUT messages on message queues.
-- Execute commands using MQ service.
+- GET / PUT / SNIFF messages on message queues.
+- Execute commands using MQ services.
 - Perform various brute force attacks.
 
 ### examples
