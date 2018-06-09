@@ -47,9 +47,9 @@ setup(
     keywords=['ibm', 'websphere', 'mq', 'security'],
     version=__version__,
 
-    # include the hooks!
+    # include the wordlists!
     package_data={
-        '': _package_files(os.path.join(here, 'wordlists'), '.txt')
+        '': _package_files(os.path.join(here, 'libpunchq/wordlists'), '.txt')
     },
 
     python_requires='>=2.7',
