@@ -6,12 +6,15 @@
 </h1>
 
 <h4 align="center">A small utility to play with IBM MQ</h4>
-<p align="center"></p>
+<p align="center">
+  <a href="https://twitter.com/leonjza"><img src="https://img.shields.io/badge/twitter-%40leonjza-blue.svg" alt="@leonjza" height="18"></a>
+  <a href="https://pypi.python.org/pypi/punch-q"><img src="https://badge.fury.io/py/punch-q.svg" alt="PyPI version" height="18"></a>
+</p>
 <br>
 
 ## introduction
 
-`punch-q` is a small Python 2 utility to play with IBM MQ instances. Using punch-q, it is possible to get / put messages on an IBM MQ queue granting one the ability to manipulate business processes at an integration layer.
+`punch-q` is a small Python 2 utility used to play with IBM MQ instances. Using `punch-q`, it is possible to perform  security related tasks such as manipulating messages on an IBM MQ queue granting one the ability to tamper with business processes at an integration layer.
 
 ## features
 
