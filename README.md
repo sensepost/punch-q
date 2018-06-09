@@ -50,7 +50,7 @@ Finally, with the MQ series client installed, `punch-q` itself can be installed 
 pip install punch-q
 ```
 
-*Note:* When running `punch-q`, and you get an error similar to `ImportError: libmqic_r.so: cannot open shared object file: No such file or directory`, simply set the `LB_LIBRARY_PATH` to /opt/mqm/lib64 library with:
+*Note:* When running `punch-q`, and you get an error similar to `Importing pymqi failed with: libmqic_r.so: cannot open shared object file: No such file or directory!`, simply set the `LB_LIBRARY_PATH` to /opt/mqm/lib64 library with:
 
 ```bash
 export LD_LIBRARY_PATH=/opt/mqm/lib64
