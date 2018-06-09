@@ -1,7 +1,8 @@
 import os
 
-from libpunchq.__init__ import __version__
 from setuptools import setup
+
+from libpunchq.__init__ import __version__
 
 
 def _package_files(directory, suffix):
@@ -33,6 +34,8 @@ with open(os.path.join(here, 'requirements.txt'), 'r') as f:
 setup(
     name='punch-q',
     description='A small utility to play with IBM Websphere MQ',
+    long_description='punch-q is a small ultility used to play with IBM MQ',
+
     license='GPL-3',
 
     author='Leon Jacobs',
