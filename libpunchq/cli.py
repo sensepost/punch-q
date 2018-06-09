@@ -23,6 +23,7 @@ except ImportError as e:
         click.secho('\nCheck out the following URL for some help: '
                     'https://github.com/dsuch/pymqi/issues/15#issuecomment-124772995\n', fg='red')
 
+from libpunchq.__init__ import __version__
 from libpunchq.conversion import channel_type_to_name, queue_type_to_name, \
     queue_usage_to_name
 from libpunchq.mqstate import mqstate
@@ -66,6 +67,15 @@ def cli(config, host, port, qm_name, channel, username, password, dump_config, t
         click.secho('Channel:               {0}'.format(mqstate.channel), dim=True)
         click.secho('Username:              {0}'.format(mqstate.username), dim=True)
         click.secho('Password:              {0}\n'.format(mqstate.password), dim=True)
+
+
+@cli.command()
+def version():
+    """
+        Prints the current punch-q version
+    """
+
+    click.secho('punch-q version {0}'.format(__version__))
 
 
 @cli.command()
