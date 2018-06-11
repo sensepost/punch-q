@@ -56,6 +56,10 @@ pip install punch-q
 export LD_LIBRARY_PATH=/opt/mqm/lib64
 ```
 
+## osquery table plugin
+
+An osquery table plugin PoC can also be found in this repository [here](https://github.com/sensepost/punch-q/tree/master/osquery-mqtable).
+
 ## license
 
 `punch-q` is licensed under a [GNU General Public v3 License](https://www.gnu.org/licenses/gpl-3.0.en.html). Permissions beyond the scope of this license may be available at http://sensepost.com/contact/.
