@@ -259,6 +259,11 @@ def channels(wordlist):
                 qmgr.disconnect()
                 continue
 
+            # Channel is unavailable
+            elif ce.reason == pymqi.CMQC.MQRC_CHANNEL_NOT_AVAILABLE:
+                click.secho('"{0}" might exist, but is not available.'.format(channel), bold=True, fg='yellow')
+                continue
+
             # An unauthenticated message means the channel at least exists.
             elif ce.reason == pymqi.CMQC.MQRC_NOT_AUTHORIZED:
                 click.secho('"{0}" might exist, but user was not authorised.'.format(channel), bold=True)
