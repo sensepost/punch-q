@@ -883,6 +883,14 @@ def execute(cmd, args, service_name, wait):
     # Cleanup the service name to remove spaces and dashes and limit to 16 chars
     service_name = str(service_name).replace('-', '').replace(' ', '')[0:16]
 
+    # Check if a full path was provided for the command to run.
+    # Seems like the ENV does not have a PATH.
+    if '/' not in cmd:
+        click.secho('The command does not appear to be a full path to the executable. This command execution may '
+                    'fail. Are you sure you want to continue?', fg='yellow')
+        if not click.confirm('Continue?'):
+            return
+
     # information
     click.secho('Cmd: {0}'.format(cmd), bold=True)
     click.secho('Arg: {0}'.format(args), bold=True)
