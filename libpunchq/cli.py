@@ -123,7 +123,7 @@ def ping():
         Ping a queue manager.
     """
 
-    mqstate.validate(['host', 'port'])
+    mqstate.validate(['host', 'port', 'qm_name', 'channel'])
 
     qmgr = pymqi.connect(mqstate.qm_name, mqstate.channel, mqstate.get_host(),
                          mqstate.username, mqstate.password)
