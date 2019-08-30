@@ -232,7 +232,7 @@ def channels(wordlist):
 
         try:
 
-            qmgr = pymqi.connect(mqstate.qm_name, channel, mqstate.get_host(),
+            qmgr = pymqi.connect(mqstate.qm_name, str(channel), mqstate.get_host(),
                                  mqstate.username, mqstate.password)
 
             pcf = pymqi.PCFExecute(qmgr)
