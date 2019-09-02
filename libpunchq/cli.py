@@ -798,7 +798,7 @@ def pop(queue, save_to, skip_confirmation):
 
 
 @messages.command()
-@click.option('--queue', '-q', required=True, help='The queue to dump messages from.')
+@click.option('--queue', '-q', required=True, help='The queue to push the message to.')
 @click.option('--source-file', '-f', type=click.File('rb'), help='A filename containing message data.')
 @click.option('--source-string', '-s', type=click.STRING, help='A string to use as message data.')
 def push(queue, source_file, source_string):
