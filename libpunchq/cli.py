@@ -378,13 +378,20 @@ def queues(prefix, min_depth):
             if queue_info.get(pymqi.CMQC.MQIA_CURRENT_Q_DEPTH, 0) < min_depth:
                 continue
 
+            # try and resolve the transmission queue for remote queue types
+            q_type = queue_type_to_name(queue_info.get(pymqi.CMQC.MQIA_Q_TYPE))
+            if q_type == 'Remote':
+                xmit_q = queue_info.get(pymqi.CMQC.MQCA_XMIT_Q_NAME, '').strip()
+                if len(xmit_q) > 0:
+                    q_type = q_type + ' (Transmission Q: {})'.format(xmit_q)
+
             t.append_row([
                 ' '.join([
                     queue_info.get(pymqi.CMQC.MQCA_CREATION_DATE, '').strip(),
                     queue_info.get(pymqi.CMQC.MQCA_CREATION_TIME, '').strip()
                 ]),
                 queue_info.get(pymqi.CMQC.MQCA_Q_NAME, '').strip(),
-                queue_type_to_name(queue_info.get(pymqi.CMQC.MQIA_Q_TYPE)),
+                q_type,
                 queue_usage_to_name(queue_info.get(pymqi.CMQC.MQIA_USAGE)),
                 queue_info.get(pymqi.CMQC.MQIA_CURRENT_Q_DEPTH, ''),
                 queue_info.get(pymqi.CMQC.MQCA_REMOTE_Q_MGR_NAME, '').strip(),
