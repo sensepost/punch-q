@@ -560,6 +560,11 @@ def sniff(queue, store, directory):
 
     mqstate.validate(['host', 'port'])
 
+    # check if a directory was set but store was not
+    if directory and not store:
+        click.secho('A directory was set to store messages but --store flag was not provided, ignoring...', dim=True,
+                    fg='yellow')
+
     # Prepare the destination directory if messages should also be saved
     if store:
         # Automatically generate a directory to save messages to
