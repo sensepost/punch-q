@@ -697,7 +697,7 @@ def sniff(queue, store, directory):
 
             # No messages, that's OK, we can ignore it.
             if dme.comp == pymqi.CMQC.MQCC_FAILED and dme.reason == pymqi.CMQC.MQRC_NO_MSG_AVAILABLE:
-                pass
+                continue
 
             # if we are not allowed to GET on this queue, mention that and quit
             if dme.comp == pymqi.CMQ.MQCC_FAILED and dme.reason == pymqi.CMQC.MQRC_GET_INHIBITED:
