@@ -379,7 +379,10 @@ def queues(prefix, min_depth):
 
     try:
 
-        click.secho('Showing queues with prefix: \'{0}\'...\n'.format(prefix), dim=True)
+        click.secho('Showing queues with prefix: \'{0}\'...'.format(prefix), dim=True)
+        if min_depth > 0:
+            click.secho('Limiting queues to those with at least {} message(s)...'.format(min_depth), dim=True)
+
         response = pcf.MQCMD_INQUIRE_Q(args)
 
     except pymqi.MQMIError as sqe:
