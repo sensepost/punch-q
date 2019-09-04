@@ -556,6 +556,12 @@ def dump(queue, limit):
 
                 break
 
+            # if we are not allowed to GET on this queue, mention that and quit
+            if dme.comp == pymqi.CMQ.MQCC_FAILED and dme.reason == pymqi.CMQC.MQRC_GET_INHIBITED:
+                click.secho('GET not allowed on queue with current access.', fg='red')
+
+                break
+
             else:
                 raise dme
 
@@ -692,6 +698,13 @@ def sniff(queue, store, directory):
             # No messages, that's OK, we can ignore it.
             if dme.comp == pymqi.CMQC.MQCC_FAILED and dme.reason == pymqi.CMQC.MQRC_NO_MSG_AVAILABLE:
                 pass
+
+            # if we are not allowed to GET on this queue, mention that and quit
+            if dme.comp == pymqi.CMQ.MQCC_FAILED and dme.reason == pymqi.CMQC.MQRC_GET_INHIBITED:
+                click.secho('GET not allowed on queue with current access.', fg='red')
+
+                break
+
             else:
                 # Some other error condition.
                 raise dme
@@ -769,6 +782,12 @@ def save(queue, limit, directory):
 
             if dme.comp == pymqi.CMQC.MQCC_FAILED and dme.reason == pymqi.CMQC.MQRC_NO_MSG_AVAILABLE:
                 click.secho('Dump complete. No more messages on the queue.', fg='yellow')
+
+                break
+
+            # if we are not allowed to GET on this queue, mention that and quit
+            if dme.comp == pymqi.CMQ.MQCC_FAILED and dme.reason == pymqi.CMQC.MQRC_GET_INHIBITED:
+                click.secho('GET not allowed on queue with current access.', fg='red')
 
                 break
 
