@@ -322,6 +322,31 @@ def users(channel):
             raise ce
 
 
+@discover.command()
+def name():
+    """
+        Discover a queue managers name.
+    """
+
+    try:
+
+        if not mqstate.channel:
+            click.secho('No channel provided, defaulting to SYSTEM.DEF.SVRCONN', dim=True)
+            mqstate.channel = 'SYSTEM.DEF.SVRCONN'
+
+        qmgr = pymqi.connect(queue_manager='', channel=mqstate.channel, conn_info=mqstate.get_host())
+        qmgr_name = qmgr.inquire(pymqi.CMQC.MQCA_Q_MGR_NAME)
+
+        click.secho('Queue Manager name: {}'.format(qmgr_name.strip()), fg='green')
+
+        qmgr.disconnect()
+
+    except pymqi.MQMIError as ce:
+
+        # Some other error condition.
+        raise ce
+
+
 @cli.group()
 def show():
     """
