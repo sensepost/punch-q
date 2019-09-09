@@ -925,7 +925,8 @@ def command():
 @click.option('--service-name', '-n', type=click.UNPROCESSED, default=None, help='A service name to use.')
 @click.option('--wait', '-w', default=5, show_default=True,
               help='Number of seconds to wait before cleaning up the service.')
-def execute(cmd, args, service_name, wait):
+@click.option('--ignore-path', is_flag=True, help='Do not warn about full paths.')
+def execute(cmd, args, service_name, wait, ignore_path):
     """
         Execute an arbitrary command.
 
@@ -943,8 +944,8 @@ def execute(cmd, args, service_name, wait):
     service_name = str(service_name).replace('-', '').replace(' ', '')[0:16]
 
     # Check if a full path was provided for the command to run.
-    # Seems like the ENV does not have a PATH.
-    if '/' not in cmd:
+    #   Seems like the ENV for MQ does not have a PATH set
+    if '/' not in cmd and not ignore_path:
         click.secho('The command does not appear to be a full path to the executable. This command execution may '
                     'fail. Are you sure you want to continue?', fg='yellow')
         if not click.confirm('Continue?'):
