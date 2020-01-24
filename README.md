@@ -14,7 +14,7 @@
 
 ## introduction
 
-`punch-q` is a small Python 2 utility used to play with IBM MQ instances. Using `punch-q`, it is possible to perform  security related tasks such as manipulating messages on an IBM MQ queue granting one the ability to tamper with business processes at an integration layer.
+`punch-q` is a small Python utility used to play with IBM MQ instances. Using `punch-q`, it is possible to perform  security related tasks such as manipulating messages on an IBM MQ queue granting one the ability to tamper with business processes at an integration layer.
 
 ## features
 
@@ -34,17 +34,34 @@ Executing commands via MQ services:
 
 ![command execution](https://i.imgur.com/vEvRem0.png)
 
+## installation - docker
+
+A docker container for `punch-q` can be built with:
+
+```text
+git clone https://github.com/sensepost/punch-q.git
+cd punch-q
+docker build -t punch-q:local .
+```
+
+Once done, you can run `punch-q` with:
+
+```text
+docker run --rm -ti punch-q:local --help
+```
+
 ## installation
 
-This utility relies on [pymqi](https://github.com/dsuch/pymqi) and needs to be successfully installed for `punch-q` to work. The installation of `pymqi` relies on the IBM MQ client utilities to be installed which you would need to download from IBM's website first. [This](https://github.com/dsuch/pymqi/issues/15#issuecomment-124772995) Github issue can be used as a reference to install the correct MQ Client libraries.
+This utility relies on [pymqi](https://github.com/dsuch/pymqi) and needs to be successfully installed for `punch-q` to work. The installation of `pymqi` relies on the IBM MQ client utilities to be available which you would need to download from IBM's website first. [This](https://github.com/dsuch/pymqi/issues/15#issuecomment-124772995) Github issue can be used as a reference to install the correct MQ Client libraries.
 
-In summary, to get the IBM MQ client for `pymqi` and `punch-q` working, you need to:
+Alternatively, a hint from [this](https://github.com/ibm-messaging/mq-golang/blob/master/Dockerfile#L53-L62) repository means one could just download and extract the archive in the correct location to compile `pymqi`. This is how the docker container does it.
 
-- Download the IBM MQ Client libraries from IBM's [website](http://www-01.ibm.com/software/integration/wmq/clients/). The version 7.5 x64 Linux client library was used while testing `punch-q` and can be found [here](https://www-945.ibm.com/support/fixcentral/swg/downloadFixes?parent=ibm~WebSphere&product=ibm/WebSphere/WebSphere+MQ&release=7.5.0.8&platform=All&function=fixId&fixids=7.5.0.8-WS-MQC-LinuxX64&useReleaseAsTarget=true&includeRequisites=0&includeSupersedes=0&downloadMethod=http) (You may need to login with an IBM ID first).
-- After the download is complete, extract the archives contents and accept the IBM license agreement with `/mqlicense.sh -accept`.
-- Install the `MQSeriesRuntime`, `MQSeriesClient` and `MQSeriesSDK` RPM's. These can be installed on Kali Linux after installing `alien` with `alien -i <PackageName>.rpm`.
+To get the IBM MQ client for `pymqi` and `punch-q` working, you need to:
 
-Finally, with the MQ series client installed, `punch-q` itself can be installed with:
+- Download the IBM MQ Client libraries for Linux from IBM's website [here](https://public.dhe.ibm.com/ibmdl/export/pub/software/websphere/messaging/mqdev/redist/9.1.4.0-IBM-MQC-Redist-LinuxX64.tar.gz). Older versions and ibraries for other operating systems is also available [here](https://public.dhe.ibm.com/ibmdl/export/pub/software/websphere/messaging/mqdev/redist/).
+- Extract the downloaded archive to `/opt/mqm`.
+
+Finally, `punch-q` itself can be installed with:
 
 ```bash
 pip install punch-q
@@ -62,4 +79,4 @@ An osquery table plugin PoC can also be found in this repository [here](https://
 
 ## license
 
-`punch-q` is licensed under a [GNU General Public v3 License](https://www.gnu.org/licenses/gpl-3.0.en.html). Permissions beyond the scope of this license may be available at http://sensepost.com/contact/.
+`punch-q` is licensed under a [GNU General Public v3 License](https://www.gnu.org/licenses/gpl-3.0.en.html). Permissions beyond the scope of this license may be available at [http://sensepost.com/contact/](http://sensepost.com/contact/).
