@@ -1,3 +1,4 @@
+import click
 import pymqi
 
 
@@ -69,6 +70,24 @@ def queue_usage_to_name(queue_usage):
     }
 
     if queue_usage not in queue_usages.keys():
-        raise Exception('Unknown usage type \'{0}\' detected'.format(queue_usage))
+        raise Exception(f'Unknown usage type "{queue_usage}" detected')
 
     return queue_usages[queue_usage]
+
+
+def mq_string(s, strip: bool = True) -> str:
+    """
+        Try and handle strings returned from MQ.
+
+        If s is bytes, try and decode() them.
+    """
+
+    if isinstance(s, str):
+        return s
+
+    if isinstance(s, bytes):
+        s = s.decode()
+        return s.strip() if strip else s
+
+    click.secho(f'Unsure what to do with: {s}. Returning unchanged', fg='yellow')
+    return s

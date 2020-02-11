@@ -52,7 +52,7 @@ setup(
         '': _package_files(os.path.join(here, 'libpunchq/wordlists'), '.txt')
     },
 
-    python_requires='>=2.7',
+    python_requires='>=3.6',
     packages=[
         'libpunchq',
     ],
@@ -60,7 +60,6 @@ setup(
     classifiers=[
         'Operating System :: OS Independent',
         'Natural Language :: English',
-        'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 3',
     ],
     entry_points={

