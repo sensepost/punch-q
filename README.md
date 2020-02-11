@@ -9,6 +9,7 @@
 <p align="center">
   <a href="https://twitter.com/leonjza"><img src="https://img.shields.io/badge/twitter-%40leonjza-blue.svg" alt="@leonjza" height="18"></a>
   <a href="https://pypi.python.org/pypi/punch-q"><img src="https://badge.fury.io/py/punch-q.svg" alt="PyPI version" height="18"></a>
+  <a href="https://hub.docker.com/r/leonjza/punch-q"><img alt="Docker Cloud Build Status" src="https://img.shields.io/docker/cloud/build/leonjza/punch-q" height="18"></a>
 </p>
 <br>
 
@@ -36,7 +37,13 @@ Executing commands via MQ services:
 
 ## installation - docker
 
-A docker container for `punch-q` can be built with:
+A docker container for `punch-q` exists and can be used with:
+
+```text
+docker run --rm -ti leonjza/punch-q
+```
+
+Alternatively the container can be built locally with:
 
 ```text
 git clone https://github.com/sensepost/punch-q.git
@@ -44,13 +51,13 @@ cd punch-q
 docker build -t punch-q:local .
 ```
 
-Once done, you can run `punch-q` with:
+Once done, you can run `punch-q` with (note the tag if you build it yourself):
 
 ```text
-docker run --rm -ti punch-q:local --help
+docker run --rm -ti leonjza/punch-q --help
 ```
 
-## installation
+## installation - host
 
 This utility relies on [pymqi](https://github.com/dsuch/pymqi) and needs to be successfully installed for `punch-q` to work. The installation of `pymqi` relies on the IBM MQ client utilities to be available which you would need to download from IBM's website first. [This](https://github.com/dsuch/pymqi/issues/15#issuecomment-124772995) Github issue can be used as a reference to install the correct MQ Client libraries.
 
