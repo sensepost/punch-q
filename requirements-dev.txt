@@ -1,6 +1,6 @@
 beautifultable==0.8.0
 click
-pymqi==1.9.3
+pymqi==1.10.1
 PyYaml>=5.0.0
 python-slugify>=4.0.0
 twine
