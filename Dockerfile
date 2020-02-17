@@ -50,7 +50,8 @@ RUN export DEBIAN_FRONTEND=noninteractive \
   && rm -rf /var/lib/apt/lists/*
 
 # Cleanup some files we dont need here
-RUN rm -Rf /opt/mqm/gskit8
+RUN cd /opt/mqm \
+  && rm -Rf gskit8/lib java samp bin inc
 
 WORKDIR /src/punch-q
 RUN pip3 install . -f wheels/ \
