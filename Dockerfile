@@ -57,5 +57,7 @@ WORKDIR /src/punch-q
 RUN pip3 install . -f wheels/ \
   && rm -Rf /src
 
+VOLUME [ "/data" ]
+
 ENTRYPOINT [ "/usr/local/bin/punch-q" ]
 
