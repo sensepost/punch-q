@@ -14,8 +14,8 @@ RUN export DEBIAN_FRONTEND=noninteractive \
     build-essential \
   && rm -rf /var/lib/apt/lists/*
 
-ENV RDURL="https://public.dhe.ibm.com/ibmdl/export/pub/software/websphere/messaging/mqdev/redist" \
-#ENV RDURL="http://192.168.143.1:62489" \
+#ENV RDURL="https://public.dhe.ibm.com/ibmdl/export/pub/software/websphere/messaging/mqdev/redist" \
+ENV RDURL="http://host.docker.internal:8000" \
     RDTAR="IBM-MQC-Redist-LinuxX64.tar.gz" \
     VRMF=9.1.4.0
 
