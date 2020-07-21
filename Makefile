@@ -1,15 +1,15 @@
-DIST_DIR := dist
+# ref: https://vic.demuzere.be/articles/golang-makefile-crosscompile/
 
-default: clean sdist
+default: run-docker
 
-clean:
-	$(RM) $(DIST_DIR)/*
+docker-dev:
+	docker build -t punch-q:dev -f Dockerfile.dev .
 
-sdist:
-	python setup.py sdist
+docker:
+	docker build -t punch-q:local .
 
-testupload:
-	twine upload dist/* -r testpypi
+run-docker-dev:
+	docker run --rm -it -v $(pwd):/punch-q punch-q:dev
 
-upload:
-	twine upload dist/*
+run-docker:
+	docker run --rm -it -v $(pwd):/data punch-q:local
