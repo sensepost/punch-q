@@ -982,7 +982,7 @@ def execute(cmd, args, service_name, wait, ignore_path):
     except pymqi.MQMIError as dme:
         if dme.reason == pymqi.CMQCFC.MQRCCF_PROGRAM_NOT_AVAILABLE:
             click.secho(f'The program \'{cmd}\' is not available on the remote system.', fg='red')
-            return
+            wait = 0
 
         else:
             raise dme
