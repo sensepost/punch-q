@@ -16,7 +16,7 @@ RUN export DEBIAN_FRONTEND=noninteractive \
 
 ENV RDURL="https://public.dhe.ibm.com/ibmdl/export/pub/software/websphere/messaging/mqdev/redist" \
     RDTAR="IBM-MQC-Redist-LinuxX64.tar.gz" \
-    VRMF=9.1.4.0
+    VRMF=9.2.2.0
 
 RUN mkdir -p /opt/mqm && cd /opt/mqm \
  && curl -LO "$RDURL/$VRMF-$RDTAR" \
