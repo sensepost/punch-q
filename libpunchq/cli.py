@@ -49,9 +49,13 @@ def cli(config, host, port, qm_name, channel, username, password, dump_config, t
 
     # set the mq configuration based on the configuration file
     if config is not None:
-        with open(config) as f:
-            config_data = yamllib.load(f, Loader=yamllib.FullLoader)
-            mqstate.dictionary_updater(config_data)
+        if os.path.isfile(config):
+            with open(config) as f:
+                config_data = yamllib.load(f, Loader=yamllib.FullLoader)
+                mqstate.dictionary_updater(config_data)
+        else:
+            click.secho('Configuration specified, but does not point towards a valid file! Exiting...\n', fg='red')
+            exit(1)
 
     # set configuration based on the flags this command got
     mqstate.dictionary_updater(locals())
